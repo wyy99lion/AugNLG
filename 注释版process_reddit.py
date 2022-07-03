@@ -129,7 +129,7 @@ def preprocess_number(string):
                 string = string.replace(number, '[NUMBER]')
     # replace is for tfidf tool
     return string.replace('[NUMBER]', '11111'), raw_string
-    #返回用'11111'替换左右数字后的string和最初的string
+    #返回用'11111'替换所有数字后的string和最初的string
 
 def delexicalize_number(input_path, output_path, thread_num=28):
     #去词化number
