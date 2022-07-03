@@ -152,7 +152,7 @@ if __name__ == '__main__':
     #in_domain_sorted = df_tfidfvect[:1].sort_values(by=['In_domain'], axis=1).to_dict()
 
 
-    # First filtering
+    # First filtering 筛选出TFIDF分数符合要求的ngram短语
     new_dict = {}; stop_words = set()
     print ('Filted phrases: ')
     for key in df_tfidfvect:
@@ -167,7 +167,7 @@ if __name__ == '__main__':
             new_dict[key] = tf_idf
 
 
-    # Second filtering
+    # Second filtering 根据表面重叠关键词获取领域相关的话语
     filtered_ngrams = {}
     for key in new_dict:
         if stopword_filtered(stop_words, key):
