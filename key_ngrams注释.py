@@ -127,7 +127,7 @@ if __name__ == '__main__':
         in_domain_ngrams += get_ngrams(string, args.ngrams)
         #获得每个域内例句的ngram构成（ngrams），组合成为in_domain_ngrams
     in_count = Counter(in_domain_ngrams)
-    #对字符串\列表\元祖\字典进行计数,返回一个字典类型的数据,键是元素,值是元素出现的次数
+    #对字符串\列表\元祖\字典（域内ngram关键词）进行计数,返回一个字典类型的数据,键是元素,值是元素出现的次数
 
 
     # Out-domain utterances
@@ -140,15 +140,28 @@ if __name__ == '__main__':
     corpus = [in_domain_corpus, output_domain_corpus] #域内域外句子构成的处理后得到的句子string
     vocabulary = {}
     for key in in_count:
-        vocabulary[key] = len(vocabulary)
+        vocabulary[key] = len(vocabulary) #为每个关键词赋予编号，获得每个ngram关键词为键，对应编号为值的字典
     vectorizer = TfidfVectorizer(vocabulary=vocabulary, smooth_idf=True, use_idf=True, ngram_range=(2, 2))
+    '''
+    TfidfVectorizer： 除了考量某词汇在文本出现的频率，还关注包含这个词汇的所有文本的数量。
+    能够削减高频没有意义的词汇出现带来的影响, 挖掘更有意义的特征。属于Tfidf特征。
+    TF为某个词在文章中出现的总次数。为了消除不同文章大小之间的差异，便于不同文章之间的比较，我们在此标准化词频：TF = 某个词在文章中出现的总次数/文章的总词数。
+    IDF为逆文档频率。逆文档频率（IDF） = log（词料库的文档总数/包含该词的文档数+1）。
+    为了避免分母为0，所以在分母上加1。
+    TF-IDF值 = TF * IDF。
+    字典为vocabulary
+    ngram_range：例如ngram_range(min,max)，是指将text分成min，min+1，min+2,.........max 个不同的词组。
+            比如 '我 爱 中国' 中ngram_range(1,3)之后可得到'我'  '爱'  '中国'  '我 爱'  '爱 中国' 和'我 爱 中国'，如果是ngram_range (1,1) 则只能得到单个单词'我'  '爱'和'中国'。
+
+    '''
     #vectorizer = TfidfVectorizer(smooth_idf=True, use_idf=True, ngram_range=(2, 2))
 
 
     # Read result
-    tfidf = vectorizer.fit_transform(corpus)
-    tfidf_tokens = vectorizer.get_feature_names()
+    tfidf = vectorizer.fit_transform(corpus)  #文本矩阵,得到tf-idf矩阵，稀疏矩阵表示法（(n_samples, n_features) 的X稀疏矩阵）
+    tfidf_tokens = vectorizer.get_feature_names()  #显示所有文本的词汇的列表
     df_tfidfvect = pd.DataFrame(data = tfidf.toarray(), index = ['In_domain', 'Out_domain'], columns = tfidf_tokens).to_dict()
+    # tfidf.toarray() 是将结果转化为稀疏矩阵
     #in_domain_sorted = df_tfidfvect[:1].sort_values(by=['In_domain'], axis=1).to_dict()
 
 
@@ -158,21 +171,27 @@ if __name__ == '__main__':
     for key in df_tfidfvect:
         tf_idf = df_tfidfvect[key]['In_domain']
         #print (key, tf_idf, df_tfidfvect[key]['Out_domain'], in_count[key])
-        if tf_idf * args.in_out_ratio < df_tfidfvect[key]['Out_domain']:
+        if tf_idf * args.in_out_ratio < df_tfidfvect[key]['Out_domain']:  #df_tfidfvect[key]['Out_domain']>0.1*tf_idf 阈值
+            # 域外ngram对应值 大于 域内ngram*0.1
             print (key, tf_idf, df_tfidfvect[key]['Out_domain'], in_count[key])
+            #输出ngram对应的 域内值，域外值，出现的总次数
             for tok in key.split():
                 stop_words.add(tok)
+                #不符合条件的key中的tok呗加入停用词
             continue
         if in_count[key] >= args.min_count and tf_idf >= args.min_tf_idf:
             new_dict[key] = tf_idf
+            #符合条件的域内ngram短语的值添加到new_dict
 
 
     # Second filtering 根据表面重叠关键词获取领域相关的话语
+    #过滤掉带停用词的ngram
     filtered_ngrams = {}
     for key in new_dict:
         if stopword_filtered(stop_words, key):
             continue
         filtered_ngrams[key] = new_dict[key]
+        
 
     # Write out
     fpout = open(keyword_path.replace('[DOMAIN]', args.domain), 'w')
