@@ -11,6 +11,7 @@ def grep(kws):
     k = '_'.join(kws.split())
     command = 'grep \"' + kws + '\" ' + REDDIT_PATH + ' > ' + OUTPUT_DIR + k + '.txt'
     os.system(command)
+    # system函数可以将字符串转化成命令在服务器上运行；其原理是每一条system函数执行时，其会创建一个子进程在系统上执行命令行，子进程的执行结果无法影响主进程；
 
 if __name__ == '__main__':
 
@@ -40,10 +41,12 @@ if __name__ == '__main__':
     kws_list = []
 
     for line in open(input_path):
+        # 循环到kws_list=20时，用grep计算kws_list对应的格式的列表
         if len(kws_list) == args.thread_num:
             utterances = pool.map(grep, kws_list)
             del kws_list[:]
         kws_list.append(line.strip())
 
     if len(kws_list) > 0:
+        #计算20的余数的kws_list对应的格式
         utterances = pool.map(grep, kws_list)
