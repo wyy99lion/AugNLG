@@ -6,6 +6,11 @@ from key_ngrams import preprocess
 from nltk import word_tokenize
 
 def random_sample(in_domain_exps, aug_data, out_domain_path, out_domain_example_num, ratio=10):
+    '''
+    采样的域外例子为域内的10倍
+    开始序号为0至‘域外例子总数-域外例子数’之间的随机数
+    从随机获得序号开始，采样特定数量的域外例子到 out_domain_exps
+    '''
     out_domain_sample_num = len(in_domain_exps) * ratio
     START_IDX = random.randint(0, out_domain_example_num-out_domain_sample_num)
     out_domain_exps = []
