@@ -27,9 +27,17 @@ def random_sample(in_domain_exps, aug_data, out_domain_path, out_domain_example_
 
 def read_from_aug(process_domain, retrive_path):
     aug_data = set()
+    #set() 函数创建一个无序不重复元素集，可进行关系测试，删除重复数据，还可以计算交集、差集、并集等。
     aug_path = retrive_path.replace('[DOMAIN]', process_domain)
+    # 替换文件名中的'[DOMAIN]'为process_domain
     for filename in os.listdir(aug_path):
+        '''
+        os.listdir() 方法用于返回指定的文件夹包含的文件或文件夹的名字的列表。
+        它不包括 . 和 .. 即使它在文件夹中。
+        '''
         for line in open(aug_path + '/' + filename):
+            # 取出对应文件中的每行字符串
+            #每两行字符串取出第一行，写入aug_data，返回
             flist = line.strip().split('\t')
             if len(flist) != 2:
                 continue
@@ -46,6 +54,7 @@ def get_fewshot_in_domain(in_domain_path, process_domain):
         if len(flist) != 2:
             continue
         utterance = flist[1].strip()
+        # 没两行中的第二行写入 utterance
         utterance = preprocess(utterance, tokenization=False)
         in_domain_exps.append(utterance)
     return in_domain_exps
@@ -59,7 +68,7 @@ def write_out(process_domain,
                 in_domain_devs=None, 
                 out_domain_devs=None):
 
-    # Make output dir
+    # Make output dir制作输出目录
     output_dir = output_dir.replace('[DOMAIN]', process_domain)
     if not os.path.exists(output_dir):
         os.system('mkdir ' + output_dir)
