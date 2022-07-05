@@ -73,7 +73,7 @@ def write_out(process_domain,
     if not os.path.exists(output_dir):
         os.system('mkdir ' + output_dir)
 
-    # Get training data
+    # Get training data 将域内和域外例子放入训练集，随机排列
     fpout = open(output_dir + '/train.txt', 'w')
     utt_list = []
     for utt in in_domain_exps:
@@ -85,7 +85,7 @@ def write_out(process_domain,
         fpout.write(utt + '\n')
     fpout.close()
 
-    # Get dev data
+    # Get dev data将域内和域外例子放入dev集，随机排列
     if (in_domain_devs is not None) and (out_domain_devs is not None):
         fpout = open(output_dir + '/dev.txt', 'w')
         utt_list = []
@@ -108,7 +108,7 @@ def write_out(process_domain,
 def initial_train(args):
     process_domain = args.domain
 
-    # Get augment data (test)
+    # Get augment data (test)  获取增强数据
     aug_data = read_from_aug(process_domain, args.retrive_path)
 
     # Get in domain examples (train)
