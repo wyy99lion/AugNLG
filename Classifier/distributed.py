@@ -98,7 +98,6 @@ def all_reduce_and_rescale_tensors(tensors, rescale_denom,
         out:输出张量。
         返回：它返回张量。
         '''
-
         # copy all-reduced buffer back into tensors
         offset = 0
         for t in buffer:
@@ -108,13 +107,17 @@ def all_reduce_and_rescale_tensors(tensors, rescale_denom,
 
     filled = 0
     for t in tensors:
-        sz = t.numel() * t.element_size()
+        sz = t.numel() * t.element_size() #返回数组t的总字节（数组t中元素的个数*数组t中单个元素的字节大小）
+        # Tensor.element_size() → int 返回单个元素的大小(以字节为单位)。
         if sz > buffer_size:
             # tensor is bigger than buffer, all-reduce and rescale directly
+            # tensor大于buffer，直接all-reduce和rescale
             torch.distributed.all_reduce(t)
             t.div_(rescale_denom)
+            # 在所有机器上减少张量数据，通过获得最终的结果。在调用之后张量在所有过程中都是按位相同的。
+            # torch.div()方法将输入的每个元素除以一个常量，然后返回一个新的修改过的张量。
         elif filled + sz > buffer_size:
-            # buffer is full, all-reduce and replace buffer with grad
+            # buffer is full, all-reduce and replace buffer with grad 缓冲区已满，全部减少并用 grad 替换缓冲区
             all_reduce_buffer()
             buffer = [t]
             filled = sz
@@ -128,10 +131,11 @@ def all_reduce_and_rescale_tensors(tensors, rescale_denom,
 
 
 def all_gather_list(data, max_size=4096):
-    """Gathers arbitrary data from all nodes into a list."""
+    """Gathers arbitrary data from all nodes into a list.将来自所有节点的任意数据收集到一个列表中"""
     world_size = torch.distributed.get_world_size()
     if not hasattr(all_gather_list, '_in_buffer') or \
             max_size != all_gather_list._in_buffer.size():
+        # hasattr() 函数用于判断对象是否包含对应的属性。
         all_gather_list._in_buffer = torch.cuda.ByteTensor(max_size)
         all_gather_list._out_buffers = [
             torch.cuda.ByteTensor(max_size)
@@ -141,6 +145,7 @@ def all_gather_list(data, max_size=4096):
     out_buffers = all_gather_list._out_buffers
 
     enc = pickle.dumps(data)
+    # pickle.dumps()将对象obj对象序列化并返回一个byte对象
     enc_size = len(enc)
     if enc_size + 2 > max_size:
         raise ValueError(
@@ -150,14 +155,18 @@ def all_gather_list(data, max_size=4096):
     in_buffer[1] = enc_size % 255
     in_buffer[2:enc_size+2] = torch.ByteTensor(list(enc))
 
-    torch.distributed.all_gather(out_buffers, in_buffer.cuda())
+    torch.distributed.all_gather(out_buffers, in_buffer.cuda()) #将整个组的张量收集到一个列表中。
+    #out_buffer输出列表。它应该包含 correctly-sized 张量，用于集体的输出。
+    #in_buffer.cuda()从当前进程广播的张量。
 
     results = []
     for i in range(world_size):
         out_buffer = out_buffers[i]
         size = (255 * out_buffer[0].item()) + out_buffer[1].item()
+        # .item()取出单元素张量的元素值并返回该值，保持原元素类型不变。,即：原张量元素为整形，则返回整形，原张量元素为浮点型则返回浮点型
 
         bytes_list = bytes(out_buffer[2:size+2].tolist())
         result = pickle.loads(bytes_list)
+        #pickle.loads(),从字节对象中读取被封装的对象
         results.append(result)
     return results
