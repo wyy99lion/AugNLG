@@ -47,6 +47,7 @@ def read_from_aug(process_domain, retrive_path):
 
 
 def get_fewshot_in_domain(in_domain_path, process_domain):
+    # 获得域内的第二个句子，加入 in_domain_exps
     in_domain_exps = []
     in_domain_path = in_domain_path.replace('[DOMAIN]', process_domain)
     for line in open(in_domain_path):
@@ -111,17 +112,19 @@ def initial_train(args):
     # Get augment data (test)  获取增强数据
     aug_data = read_from_aug(process_domain, args.retrive_path)
 
-    # Get in domain examples (train)
+    # Get in domain examples (train)  获得域内的第二个句子
     in_domain_train_path = '%s/train.txt' % args.in_domain_path
     in_domain_exps = get_fewshot_in_domain(in_domain_train_path, process_domain)
-    # Get randomly sampled out of domain examples (train)
+    
+    # Get randomly sampled out of domain examples (train) 从域示例中随机抽样（训练）
     out_domain_exps = random_sample(in_domain_exps, aug_data, args.delex_path, 
                                         args.out_domain_example_num, ratio=args.neg_pos_ratio_init)
 
-    # Get in domain examples (test)
+    # Get in domain examples (test) 获得域内例子
     in_domain_test_path = '%s/test.txt' % args.in_domain_path
     in_domain_devs = get_fewshot_in_domain(in_domain_test_path, process_domain)
-    # Get randomly sampled out of domain examples (test)
+    
+    # Get randomly sampled out of domain examples (test)  从域示例中随机抽样（测试）
     out_domain_devs = random_sample(in_domain_devs, aug_data, args.delex_path, 
                                         args.out_domain_example_num, ratio=args.neg_pos_ratio_init)
     
@@ -141,9 +144,11 @@ def self_training(args):
         return True
 
     def load_stop_kw(process_domain):
+        # 获取停用词
         stop_kw = []
         aug_path = args.retrive_path.replace('[DOMAIN]', process_domain)
-        for filename in os.listdir(aug_path):
+        for filename in os.listdir(aug_path): 
+            # 如果文件中的行数超过10000，将key添加到stop_kw
             key = filename.replace('.txt', '').replace('_', ' ')
             if len([line for line in open(aug_path + '/' + filename)]) >= 10000:
                 stop_kw.append(key)
