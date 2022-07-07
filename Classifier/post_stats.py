@@ -51,7 +51,7 @@ def cal_self_repeat(summary):
 
 def cal_novel(summary, gold, source, summary_ngram_novel, gold_ngram_novel):
     summary = summary.replace('<q>',' ')
-    summary = re.sub(r' +', ' ', summary).strip()
+    summary = re.sub(r' +', ' ', summary).strip() #将summary中的' +'替换为' '
     gold = gold.replace('<q>',' ')
     gold = re.sub(r' +', ' ', gold).strip()
     source = source.replace(' ##','')
@@ -60,14 +60,16 @@ def cal_novel(summary, gold, source, summary_ngram_novel, gold_ngram_novel):
 
 
     for n in summary_ngram_novel.keys():
-        summary_grams = set(n_grams(summary.split(), n))
+        summary_grams = set(n_grams(summary.split(), n)) #创建一个由ngram和n构成的元素集
         gold_grams = set(n_grams(gold.split(), n))
         source_grams = set(n_grams(source.split(), n))
-        joint = summary_grams.intersection(source_grams)
-        novel = summary_grams - joint
+        joint = summary_grams.intersection(source_grams) #得到summary_grams和source_grams的交集
+        # python集合的intersection()方法：intersection() 方法的工作原理是：返回多个集合（集合的数量大于等于2）的交集，即新的集合包含了所有集合中所共有的元素。
+        novel = summary_grams - joint #得到summary_grams中除去（summary_grams和source_grams的交集）后的部分
         summary_ngram_novel[n][0] += 1.0*len(novel)
         summary_ngram_novel[n][1] += len(summary_grams)
         summary_ngram_novel[n][2] += 1.0 * len(novel) / (len(summary.split()) + 1e-6)
+        # summary_ngram_novel[n]行的列元素为由其原本的值分别+ novel的长度、summary_grams的长度、（novel的长度/summary中元素长度+1e-6）
         joint = gold_grams.intersection(source_grams)
         novel = gold_grams - joint
         gold_ngram_novel[n][0] += 1.0*len(novel)
