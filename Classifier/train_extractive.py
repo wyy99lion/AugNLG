@@ -28,10 +28,12 @@ def train_multi_ext(args):
     init_logger()
 
     nb_gpu = args.world_size
-    mp = torch.multiprocessing.get_context('spawn')
+    mp = torch.multiprocessing.get_context('spawn') 
+    #使用multiprocessing.get_context(method)函数来设置上下文中的启动方式
 
     # Create a thread to listen for errors in the child processes.
-    error_queue = mp.SimpleQueue()
+    # 创建一个线程来监听子进程中的错误
+    error_queue = mp.SimpleQueue() #SimpleQueue() 先进先出
     error_handler = ErrorHandler(error_queue)
 
     # Train with multiprocessing.
@@ -39,8 +41,19 @@ def train_multi_ext(args):
     for i in range(nb_gpu):
         device_id = i
         procs.append(mp.Process(target=run, args=(args,device_id, error_queue,), daemon=True))
-        procs[i].start()
-        logger.info(" Starting process pid: %d  " % procs[i].pid)
+        '''
+        process模块是一个创建进程的模块，借助这个模块，就可以完成进程的创建。
+        Process（group=None, target=None, name=None, args=(), kwargs={}）
+        '''
+        1 group——参数未使用，值始终为None
+        2 target——表示调用对象，即子进程要执行的任务
+        3 args——表示调用对象的位置参数元组，args=(1,2,'egon',)
+        4 kwargs——表示调用对象的字典,kwargs={'name':'egon','age':18}
+        5 name——为子进程的名称
+        '''
+        '''
+        procs[i].start() # .start()：启动进程，并调用该子进程中的obj.run()
+        logger.info(" Starting process pid: %d  " % procs[i].pid) #.pid：进程的pid
         error_handler.add_child(procs[i].pid)
     for p in procs:
         p.join()
@@ -49,6 +62,7 @@ def train_multi_ext(args):
 def run(args, device_id, error_queue):
     """ run process """
     setattr(args, 'gpu_ranks', [int(i) for i in args.gpu_ranks])
+    #setattr（）函数允许我们设置对象属性值。args的'gpu_ranks'属性设置为[int(i) for i in args.gpu_ranks]
 
     try:
         gpu_rank = distributed.multi_init(device_id, args.world_size, args.gpu_ranks)
@@ -68,7 +82,9 @@ def run(args, device_id, error_queue):
 
 class ErrorHandler(object):
     """A class that listens for exceptions in children processes and propagates
-    the tracebacks to the parent process."""
+    the tracebacks to the parent process.
+    侦听子进程中的异常并将回溯传播到父进程的类。
+    """
 
     def __init__(self, error_queue):
         """ init error handler """
