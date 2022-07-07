@@ -50,6 +50,11 @@ def cal_self_repeat(summary):
     return ngram_repeats
 
 def cal_novel(summary, gold, source, summary_ngram_novel, gold_ngram_novel):
+    '''
+    令summary_ngram_novel[n]行的每列元素为由其原本的值分别+ novel的长度、summary_grams的长度、（novel的长度/summary中元素长度+1e-6）
+    gold_ngram_novel[n]行的列元素为由其原本的值分别+ novel的长度、gold_grams的长度、（novel的长度/gold中元素长度+1e-6）
+    其中的novel分别为得到summary_grams/gold_grams中除去（summary_grams/gold_grams和source_grams的交集）后的部分
+    '''
     summary = summary.replace('<q>',' ')
     summary = re.sub(r' +', ' ', summary).strip() #将summary中的' +'替换为' '
     gold = gold.replace('<q>',' ')
@@ -78,10 +83,13 @@ def cal_novel(summary, gold, source, summary_ngram_novel, gold_ngram_novel):
 
 
 def cal_repeat(args):
+    # 按行将数据写入candidate_lines 、 gold_lines、src_lines
     candidate_lines = open(args.result_path+'.candidate').read().strip().split('\n')
     gold_lines = open(args.result_path+'.gold').read().strip().split('\n')
     src_lines = open(args.result_path+'.raw_src').read().strip().split('\n')
     lines = zip(candidate_lines,gold_lines,src_lines)
+    # zip() 函数是 Python 内置函数之一，它可以将多个序列（列表、元组、字典、集合、字符串以及 range() 区间构成的列表）“压缩”成一个 zip 对象。
+    # 所谓“压缩”，其实就是将这些序列中对应位置的元素重新组合，生成一个个新的元组。eg 第一个元组组成为candidate_lines 、 gold_lines、src_lines的第一个元素
 
     summary_ngram_novel = {1: [0, 0, 0], 2: [0, 0, 0], 4: [0, 0, 0]}
     gold_ngram_novel = {1: [0, 0, 0], 2: [0, 0, 0], 4: [0, 0, 0]}
@@ -90,7 +98,14 @@ def cal_repeat(args):
         # self_repeats = cal_self_repeat(c)
         cal_novel(c, g, s,summary_ngram_novel, gold_ngram_novel)
     print(summary_ngram_novel, gold_ngram_novel)
-
+    '''
+    cal_novel(summary, gold, source, summary_ngram_novel, gold_ngram_novel)
+    令summary_ngram_novel[n]行的每列元素为由其原本的值分别+ novel的长度、summary_grams的长度、（novel的长度/summary中元素长度+1e-6）
+    gold_ngram_novel[n]行的列元素为由其原本的值分别+ novel的长度、gold_grams的长度、（novel的长度/gold中元素长度+1e-6）
+    其中的novel分别为得到summary_grams/gold_grams中除去（summary_grams/gold_grams和source_grams的交集）后的部分
+    '''
+    
+    
     for n in summary_ngram_novel.keys():
         # summary_ngram_novel[n] = summary_ngram_novel[n][2]/len(src_lines)
         # gold_ngram_novel[n] = gold_ngram_novel[n][2]/len(src_lines)
