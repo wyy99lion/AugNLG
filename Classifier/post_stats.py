@@ -112,6 +112,7 @@ def cal_repeat(args):
         summary_ngram_novel[n] = summary_ngram_novel[n][0]/summary_ngram_novel[n][1]
         gold_ngram_novel[n] = gold_ngram_novel[n][0]/gold_ngram_novel[n][1]
     print(summary_ngram_novel, gold_ngram_novel)
+    # 打印summary_ngram_novel[n]为n行0列的值/n行1列的值
 
 
 if __name__ == '__main__':
