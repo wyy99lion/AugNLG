@@ -78,6 +78,7 @@ def run(args, device_id, error_queue):
         # propagate exception to parent process, keeping original traceback
         import traceback
         error_queue.put((args.gpu_ranks[device_id], traceback.format_exc()))
+        # put()函数：把数值型或字符型变量转为字符型变量
 
 
 class ErrorHandler(object):
@@ -94,7 +95,7 @@ class ErrorHandler(object):
         self.children_pids = []
         self.error_thread = threading.Thread(
             target=self.error_listener, daemon=True)
-        self.error_thread.start()
+        self.error_thread.start()  #启动线程，即让线程开始执行
         signal.signal(signal.SIGUSR1, self.signal_handler)
 
     def add_child(self, pid):
@@ -103,9 +104,10 @@ class ErrorHandler(object):
 
     def error_listener(self):
         """ error listener """
-        (rank, original_trace) = self.error_queue.get()
+        (rank, original_trace) = self.error_queue.get() #吃掉缓冲区回车
         self.error_queue.put((rank, original_trace))
         os.kill(os.getpid(), signal.SIGUSR1)
+        #os.getpid()可获取当前进程id，返回值为int
 
     def signal_handler(self, signalnum, stackframe):
         """ signal handler """
@@ -125,15 +127,25 @@ def test_ext(args, device_id, pt, step):
     else:
         test_from = args.test_from
     logger.info('Loading checkpoint from %s' % test_from)
-    checkpoint = torch.load(test_from, map_location=lambda storage, loc: storage)
+    checkpoint = torch.load(test_from, map_location=lambda storage, loc: storage) ## Load all tensors onto GPU 1
+    # torch.load(f, map_location=None, map_location=None, pickle_module=pickle, **pickle_load_args)
+    '''
+    name 类似文件的对象(必须实现read()，:meth ' readline '，:meth ' tell '和:meth ' seek ')，或者是包含文件的字符串。
+    map_location – 函数、torch.device或者字典指明如何重新映射存储位置。
+    pickle_module – 用于unpickling元数据和对象的模块(必须匹配用于序列化文件的pickle_module)
+    pickle_load_args – (仅适用于Python 3)传递给pickle_module.load()和pickle_module.Unpickler()的可选关键字参数，例如errors=…
+    '''
+    
     opt = vars(checkpoint['opt'])
     for k in opt.keys():
         if (k in model_flags):
             setattr(args, k, opt[k])
+            #setattr（）函数允许我们设置对象属性值。args的k属性设置为opt[k]
     print(args)
 
     model = ExtSummarizer(args, device, checkpoint)
     model.eval()
+    #在评估模式下，batchNorm层，dropout层等用于优化训练而添加的网络层会被关闭，从而使得评估时不会发生偏移。
 
     filename = args.mode
     test_iter = data_loader.Dataloader(args, load_dataset(args, filename, shuffle=False),
