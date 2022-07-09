@@ -136,12 +136,12 @@ class LossComputeBase(nn.Module):#父类
             :obj:`onmt.utils.Statistics`: validation loss statistics验证损失统计
 
         """
-        batch_stats = Statistics() # models.reporter
+        batch_stats = Statistics() # 来自models.reporter
         shard_state = self._make_shard_state(batch, output)
-        for shard in shards(shard_state, shard_size):
+        for shard in shards(shard_state, shard_size):#定义的函数
             loss, stats = self._compute_loss(batch, **shard)
-            loss.div(float(normalization)).backward()
-            batch_stats.update(stats)
+            loss.div(float(normalization)).backward() #div主要是用来求分组后行或列的占比
+            batch_stats.update(stats) #update()函数用于将两个字典合并操作，有相同的就覆盖
 
         return batch_stats
 
@@ -153,9 +153,9 @@ class LossComputeBase(nn.Module):#父类
             target (:obj:`FloatTensor`): true targets
 
         Returns:
-            :obj:`onmt.utils.Statistics` : statistics for this batch.
+            :obj:`onmt.utils.Statistics` : statistics for this batch.该批次的统计数据。
         """
-        pred = scores.max(1)[1]
+        pred = scores.max(1)[1] #(1)dim=1表示每行的最大值；[1]表示返回最大值的索引
         non_padding = target.ne(self.padding_idx)
         num_correct = pred.eq(target) \
                           .masked_select(non_padding) \
@@ -173,6 +173,7 @@ class LossComputeBase(nn.Module):#父类
 
 class LabelSmoothingLoss(nn.Module):
     """
+    标签平滑损失,降低onehot过拟合
     With label smoothing,
     KL-divergence between q_{smoothed ground truth prob.}(w)
     and p_{prob. computed by model}(w) is minimized.
@@ -193,11 +194,26 @@ class LabelSmoothingLoss(nn.Module):
         output (FloatTensor): batch_size x n_classes
         target (LongTensor): batch_size
         """
-        model_prob = self.one_hot.repeat(target.size(0), 1)
+        model_prob = self.one_hot.repeat(target.size(0), 1) 
+        #（返回一个新字符串，表示将原字符串重复n次。size(0)中的0表示第0维度的数据数量）
         model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
-        model_prob.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)
+        '''
+        scatter_(input, dim, index, src)：将src中数据根据index中的索引按照dim的方向填进input。可以理解成放置元素或者修改元素     
 
-        return F.kl_div(output, model_prob, reduction='sum')
+        dim：沿着哪个维度进行索引
+        index：用来 scatter 的元素索引
+        src：用来 scatter 的源元素，可以是一个标量或一个张量
+        '''
+        model_prob.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)  #.unsqueeze(1)给张量升维
+        #用value0填充tensor  model_prob中与mask(target == self.padding_idx).unsqueeze(1)中值为1位置相对应的元素。mask的形状必须与要填充的tensor形状一致。
+
+        return F.kl_div(output, model_prob, reduction='sum') 
+        # 计算 kl散度 F.kl_div()
+        '''
+        第一个参数传入的是一个对数概率矩阵，第二个参数传入的是概率矩阵。这里很重要，不然求出来的kl散度可能是个负值。
+        有两个矩阵X, Y。因为kl散度具有不对称性，存在一个指导和被指导的关系，因此这连个矩阵输入的顺序需要确定一下。
+        举个例子：如果现在想用Y指导X，第一个参数要传X，第二个要传Y。就是被指导的放在前面，然后求相应的概率和对数概率就可以了。
+        '''
 
 
 class NMTLossCompute(LossComputeBase):
@@ -209,6 +225,7 @@ class NMTLossCompute(LossComputeBase):
                  label_smoothing=0.0):
         super(NMTLossCompute, self).__init__(generator, symbols['PAD'])
         self.sparse = not isinstance(generator[1], nn.LogSoftmax)
+        # 来判断一个对象是否是一个已知的类型，通常用于判断两个类型是否相同。 
         if label_smoothing > 0:
             self.criterion = LabelSmoothingLoss(
                 label_smoothing, vocab_size, ignore_index=self.padding_idx
@@ -217,6 +234,7 @@ class NMTLossCompute(LossComputeBase):
             self.criterion = nn.NLLLoss(
                 ignore_index=self.padding_idx, reduction='sum'
             )
+            #NLLLoss结果就是把输出结果过一层softmax后，取对数之后的结果与Label对应的那个值拿出来，再去掉负号，然后求和取均值。
 
     def _make_shard_state(self, batch, output):
         return {
@@ -225,9 +243,11 @@ class NMTLossCompute(LossComputeBase):
         }
 
     def _compute_loss(self, batch, output, target):
-        bottled_output = self._bottle(output)
+        bottled_output = self._bottle(output) #output转换为dim1为output的dim2 的二维数据
         scores = self.generator(bottled_output)
         gtruth =target.contiguous().view(-1)
+        # torch.contiguous()方法首先拷贝了一份张量在内存中的地址，然后将地址按照形状改变后的张量的语义进行排列。
+        # 先将不连续数据按语义转换为连续数据，后展平
 
         loss = self.criterion(scores, gtruth)
 
@@ -237,7 +257,7 @@ class NMTLossCompute(LossComputeBase):
 
 
 def filter_shard_state(state, shard_size=None):
-    """ ? """
+    """ ? ？？"""
     for k, v in state.items():
         if shard_size is None:
             yield k, v
@@ -246,6 +266,11 @@ def filter_shard_state(state, shard_size=None):
             v_split = []
             if isinstance(v, torch.Tensor):
                 for v_chunk in torch.split(v, shard_size):
+                    # torch.split()作用将tensor分成块结构。把v拆分为shard_size的块
+                    #参数：torch.split(tensor, split_size_or_sections, dim=0)
+                    # tesnor：input，待分输入
+                    # split_size_or_sections：需要切分的大小(int or list )
+                    # dim：切分维度
                     v_chunk = v_chunk.data.clone()
                     v_chunk.requires_grad = v.requires_grad
                     v_split.append(v_chunk)
@@ -261,15 +286,20 @@ def shards(state, shard_size, eval_only=False):
         shard_size: The maximum size of the shards yielded by the model.
         eval_only: If True, only yield the state, nothing else.
               Otherwise, yield shards.
+        state：对应于 *LossCompute._make_shard_state() 输出的字典。 这些键的值类似于张量或无。
+        shard_size：模型产生的分片的最大大小。
+        eval_only：如果为真，只产生状态，没有别的。 否则，产生分片。
 
     Yields:
-        Each yielded shard is a dict.
+        Each yielded shard is a dict.每个产生的分片都是一个字典。
 
     Side effect:
         After the last shard, this function does back-propagation.
+        在最后一个分片之后，此函数进行反向传播。
     """
     if eval_only:
         yield filter_shard_state(state)
+        # key和切块后的数据
     else:
         # non_none: the subdict of the state dictionary where the values
         # are not None.
@@ -280,8 +310,13 @@ def shards(state, shard_size, eval_only=False):
         # want a sequence of dictionaries of tensors.
         # First, unzip the dictionary into a sequence of keys and a
         # sequence of tensor-like sequences.
+        '''
+        state 是一个类张量序列的字典，但我们想要一个张量字典序列。
+        首先，将字典解压成一个键序列和一个类似张量的序列。
+        '''
         keys, values = zip(*((k, [v_chunk for v_chunk in v_split])
                              for k, (_, v_split) in non_none.items()))
+        # 获得封装好的块，由键序列和一个类似张量的序列组成
 
         # Now, yield a dictionary for each shard. The keys are always
         # the same. values is a sequence of length #keys where each
@@ -289,7 +324,13 @@ def shards(state, shard_size, eval_only=False):
         # over the shards, not over the keys: therefore, the values need
         # to be re-zipped by shard and then each shard can be paired
         # with the keys.
+        '''
+        现在，为每个分片生成一个字典。 钥匙总是一样的。 
+        values 是一个长度为#keys 的序列，其中每个元素都是一个长度为#shards 的序列。 
+        我们想要遍历分片，而不是键：因此，值需要通过分片重新压缩，然后每个分片都可以与键配对。
+        '''
         for shard_tensors in zip(*values):
+            #该函数的运算顺序：先对 * 后面的序列进行解包，之后用zip()函数进行打包。
             yield dict(zip(keys, shard_tensors))
 
         # Assumed backprop'd
