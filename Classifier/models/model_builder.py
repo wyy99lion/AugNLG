@@ -15,7 +15,9 @@ def build_optim(args, model, checkpoint):
     if checkpoint is not None:
         optim = checkpoint['optim'][0]
         saved_optimizer_state_dict = optim.optimizer.state_dict()
+        #.optimizer.state_dict() 返回dict类型的优化器的state状态
         optim.optimizer.load_state_dict(saved_optimizer_state_dict)
+        #.load_state_dict  用传入的state_dict来update原来optimizer的state
         if args.visible_gpus != '-1':
             for state in optim.optimizer.state.values():
                 for k, v in state.items():
