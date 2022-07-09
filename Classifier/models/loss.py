@@ -3,6 +3,8 @@ This file handles the details of the loss function during training.
 
 This includes: LossComputeBase and the standard NMTLossCompute, and
                sharded loss compute stuff.
+该文件处理训练期间损失函数的细节。
+这包括：LossComputeBase 和标准 NMTLossCompute，以及分片损失计算。
 """
 from __future__ import division
 import torch
@@ -21,30 +23,32 @@ def abs_loss(generator, symbols, vocab_size, device, train=True, label_smoothing
 
 
 
-class LossComputeBase(nn.Module):
+class LossComputeBase(nn.Module):#父类
     """
     Class for managing efficient loss computation. Handles
     sharding next step predictions and accumulating mutiple
     loss computations
+    用于管理有效损失计算的类。 处理分片下一步预测和累积多重损失计算
 
 
     Users can implement their own loss computation strategy by making
     subclass of this one.  Users need to implement the _compute_loss()
     and make_shard_state() methods.
+    用户可以通过创建这个子类来实现自己的损失计算策略。 用户需要实现 _compute_loss() 和 make_shard_state() 方法。
 
     Args:
-        generator (:obj:`nn.Module`) :
+        generator (:obj:`nn.Module`) :将解码器的输出映射到目标词汇表上的分布的模块。
              module that maps the output of the decoder to a
              distribution over the target vocabulary.
-        tgt_vocab (:obj:`Vocab`) :
+        tgt_vocab (:obj:`Vocab`) :表示目标输出的 torchtext 词汇对象
              torchtext vocab object representing the target output
-        normalzation (str): normalize by "sents" or "tokens"
+        normalzation (str): normalize by "sents" or "tokens"通过“sents”或“tokens”进行标准化
     """
 
     def __init__(self, generator, pad_id):
         super(LossComputeBase, self).__init__()
         self.generator = generator
-        self.padding_idx = pad_id
+        self.padding_idx = pad_id #填充id
 
 
 
@@ -53,14 +57,17 @@ class LossComputeBase(nn.Module):
         Make shard state dictionary for shards() to return iterable
         shards for efficient loss computation. Subclass must define
         this method to match its own _compute_loss() interface.
+        为 shards() 制作分片状态字典以返回可迭代的分片以进行有效的损失计算。 
+        子类必须定义这个方法来匹配它自己的 _compute_loss() 接口。
         Args:
             batch: the current batch.
             output: the predict output from the model.
             range_: the range of examples for computing, the whole
                     batch or a trunc of it?
-            attns: the attns dictionary returned from the model.
+            计算示例的范围，整批还是截断？
+            attns: the attns dictionary returned from the model.从模型返回的 attns 字典。
         """
-        return NotImplementedError
+        return NotImplementedError #在父类中不定义具体内容，在子类中定义，如不定义即调用，抛出error
 
     def _compute_loss(self, batch, output, target, **kwargs):
         """
@@ -82,9 +89,9 @@ class LossComputeBase(nn.Module):
         Args:
           batch (batch): batch of labeled examples
           output (:obj:`FloatTensor`):
-              output of decoder model `[tgt_len x batch x hidden]`
-          attns (dict of :obj:`FloatTensor`) :
-              dictionary of attention distributions
+              output of decoder model #解码器输出`[tgt_len x batch x hidden]`
+          attns (dict of :obj:`FloatTensor`) #类型为FloatTensor:
+              dictionary of attention distributions注意力分布词典
               `[tgt_len x batch x src_len]`
         Returns:
             :obj:`onmt.utils.Statistics`: loss statistics
@@ -99,15 +106,20 @@ class LossComputeBase(nn.Module):
                              normalization):
         """Compute the forward loss and backpropagate.  Computation is done
         with shards and optionally truncation for memory efficiency.
+        计算前向损失和反向传播。 计算是通过分片完成的，并且可以选择截断以提高内存效率。
 
         Also supports truncated BPTT for long sequences by taking a
         range in the decoder output sequence to back propagate in.
         Range is from `(cur_trunc, cur_trunc + trunc_size)`.
+        通过在解码器输出序列中取一个范围来反向传播，还支持长序列的截断 BPTT。
+        范围来自`(cur_trunc, cur_trunc + trunc_size)`
 
         Note sharding is an exact efficiency trick to relieve memory
         required for the generation buffers. Truncation is an
         approximate efficiency trick to relieve the memory required
         in the RNN buffers.
+        注意分片是一种精确的效率技巧，可以减轻生成缓冲区所需的内存。 
+        截断是一种近似的效率技巧，可以减轻 RNN 缓冲区所需的内存。
 
         Args:
           batch (batch) : batch of labeled examples
@@ -115,16 +127,16 @@ class LossComputeBase(nn.Module):
               output of decoder model `[tgt_len x batch x hidden]`
           attns (dict) : dictionary of attention distributions
               `[tgt_len x batch x src_len]`
-          cur_trunc (int) : starting position of truncation window
-          trunc_size (int) : length of truncation window
-          shard_size (int) : maximum number of examples in a shard
-          normalization (int) : Loss is divided by this number
+          cur_trunc (int) : starting position of truncation window 截断窗口的起始位置
+          trunc_size (int) : length of truncation window 截断窗口的长度
+          shard_size (int) : maximum number of examples in a shard 分片中的最大示例数
+          normalization (int) : Loss is divided by this number 损失除以这个数字
 
         Returns:
-            :obj:`onmt.utils.Statistics`: validation loss statistics
+            :obj:`onmt.utils.Statistics`: validation loss statistics验证损失统计
 
         """
-        batch_stats = Statistics()
+        batch_stats = Statistics() # models.reporter
         shard_state = self._make_shard_state(batch, output)
         for shard in shards(shard_state, shard_size):
             loss, stats = self._compute_loss(batch, **shard)
