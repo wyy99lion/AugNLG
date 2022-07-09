@@ -6,6 +6,7 @@ import torch.nn as nn
 def aeq(*args):
     """
     Assert all arguments have the same value
+    断言所有参数具有相同的值
     """
     arguments = (arg for arg in args)
     first = next(arguments)
@@ -16,20 +17,24 @@ def aeq(*args):
 def sequence_mask(lengths, max_len=None):
     """
     Creates a boolean mask from sequence lengths.
+    从序列长度创建一个布尔掩码。
     """
-    batch_size = lengths.numel()
+    batch_size = lengths.numel() #返回输入张量中元素的总数。
     max_len = max_len or lengths.max()
+    # .lt逐元素比较input和other ， 即是否 ，第二个参数可以为一个数或与第一个参数相同形状和类型的张量。
     return (torch.arange(0, max_len)
             .type_as(lengths)
             .repeat(batch_size, 1)
-            .lt(lengths.unsqueeze(1)))
+            .lt(lengths.unsqueeze(1))) #返回一个每个元素是否为1的mask
+
 
 
 def gelu(x):
+    #实现张量和标量之间逐元素求指数操作, 或者在可广播的张量之间逐元素求指数操作.torch.pow(x, 3)求x^3
     return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
 
 
-""" Global attention modules (Luong / Bahdanau) """
+""" Global attention modules (Luong / Bahdanau) 全局注意力模块 """
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -44,6 +49,9 @@ class GlobalAttention(nn.Module):
     Constructs a unit mapping a query `q` of size `dim`
     and a source matrix `H` of size `n x dim`, to an output
     of size `dim`.
+    全局注意力需要一个矩阵和一个查询向量。 然后它根据输入查询计算矩阵的参数化凸组合。
+
+    构造一个单元，将大小为“dim”的查询“q”和大小为“n x dim”的源矩阵“H”映射到大小为“dim”的输出。
 
 
     .. mermaid::
@@ -70,9 +78,11 @@ class GlobalAttention(nn.Module):
     :math:`c = sum_{j=1}^{SeqLength} a_j H_j` where
     :math:`a_j` is the softmax of a score function.
     Then then apply a projection layer to [q, c].
+    然后将投影层应用于 [q, c]。
 
     However they
     differ on how they compute the attention score.
+    然而在计算注意力分数的方式上有所不同。
 
     * Luong Attention (dot, general):
        * dot: :math:`score(H_j,q) = H_j^T q`
@@ -84,9 +94,9 @@ class GlobalAttention(nn.Module):
 
 
     Args:
-       dim (int): dimensionality of query and key
-       coverage (bool): use coverage term
-       attn_type (str): type of attention to use, options [dot,general,mlp]
+       dim (int): dimensionality of query and key 查询和键的维度
+       coverage (bool): use coverage term 使用覆盖术语
+       attn_type (str): type of attention to use, options [dot,general,mlp]注意使用的类型，选项 [dot,general,mlp]
 
     """
 
@@ -112,18 +122,19 @@ class GlobalAttention(nn.Module):
     def score(self, h_t, h_s):
         """
         Args:
-          h_t (`FloatTensor`): sequence of queries `[batch x tgt_len x dim]`
-          h_s (`FloatTensor`): sequence of sources `[batch x src_len x dim]`
+          h_t (`FloatTensor`): sequence of queries `[batch x tgt_len x dim]`查询序列`[batch x tgt_len x dim]`
+          h_s (`FloatTensor`): sequence of sources `[batch x src_len x dim]`资源序列`[batch x src_len x dim]`
 
         Returns:
           :obj:`FloatTensor`:
            raw attention scores (unnormalized) for each src index
+           每个 src 索引的原始注意力分数（未标准化）
           `[batch x tgt_len x src_len]`
 
         """
 
         # Check input sizes
-        src_batch, src_len, src_dim = h_s.size()
+        src_batch, src_len, src_dim = h_s.size() #资源序列的各维度大小
         tgt_batch, tgt_len, tgt_dim = h_t.size()
 
         if self.attn_type in ["general", "dot"]:
