@@ -9,9 +9,10 @@ from others.logging import logger
 
 class Batch(object):
     def _pad(self, data, pad_id, width=-1):
-        if (width == -1):
+        if (width == -1): #width为d中最长的序列长度
             width = max(len(d) for d in data)
         rtn_data = [d + [pad_id] * (width - len(d)) for d in data]
+        # 每个元素为d+[pad_id]填充，最终序列长度被填充为width
         return rtn_data
 
     def __init__(self, data=None, device=None, is_test=False):
@@ -22,14 +23,15 @@ class Batch(object):
             pre_segs = [x[1] for x in data]
             pre_clss = [x[2] for x in data]
 
-            src = torch.tensor(self._pad(pre_src, 0))
+            src = torch.tensor(self._pad(pre_src, 0)) #用0填充序列
             segs = torch.tensor(self._pad(pre_segs, 0))
-            mask_src = ~(src == 0)
+            mask_src = ~(src == 0) #bool取反
 
             clss = torch.tensor(pre_clss)
             mask_cls = ~(clss == -1)
 
-            setattr(self, 'clss', clss.to(device))
+            setattr(self, 'clss', clss.to(device)) 
+            #将所有最开始读取数据时的tensor变量copy一份到device所指定的GPU上去，之后的运算都在GPU上进行。
             setattr(self, 'src', src.to(device))
             setattr(self, 'segs', segs.to(device))
             setattr(self, 'mask_src', mask_src.to(device))
