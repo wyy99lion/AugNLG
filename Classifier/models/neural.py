@@ -289,9 +289,10 @@ class MultiHeadedAttention(nn.Module):
     Also includes several additional tricks.
 
     Args:
-       head_count (int): number of parallel heads
+       head_count (int): number of parallel heads平行头数
        model_dim (int): the dimension of keys/values/queries,
            must be divisible by head_count
+           键/值/查询的维度必须能被 head_count 整除
        dropout (float): dropout parameter
     """
 
@@ -465,14 +466,19 @@ class DecoderState(object):
     input_feeding and non-recurrent models.
 
     Modules need to implement this to utilize beam search decoding.
+    用于将循环解码器的当前状态组合在一起的接口。 在最简单的情况下只代表模型的隐藏状态。 但也可用于实现各种形式的 input_feeding 和非循环模型。
+    模块需要实现这一点以利用beam search解码。
+    #即，第n步取出概率最大的前n个单词组成的单词对，eg beam size = 3
+    第一步选出概率最大的3个单词
+    第2步以1中的3个单词为基础，选出前概率前3的单词对...
     """
     def detach(self):
         """ Need to document this """
         self.hidden = tuple([_.detach() for _ in self.hidden])
-        self.input_feed = self.input_feed.detach()
+        self.input_feed = self.input_feed.detach() #.detach()不需要计算梯度的参数
 
     def beam_update(self, idx, positions, beam_size):
-        """ Need to document this """
+        """ Need to document this  需要记录这个 """
         for e in self._all:
             sizes = e.size()
             br = sizes[1]
