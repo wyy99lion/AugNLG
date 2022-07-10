@@ -26,7 +26,9 @@ def build_optim(model, opt, checkpoint):
         # the method optim.set_parameters(model.parameters()) will overwrite
         # optim.optimizer, and with ith the values stored in
         # optim.optimizer.state_dict()
-        saved_optimizer_state_dict = optim.optimizer.state_dict()
+        #我们需要保存 optim.optimizer.state_dict() 的副本，以便稍后在此方法的第 2 阶段设置优化器状态
+        #因为方法 optim.set_parameters(model.parameters()) 将覆盖 optim.optimizer，并且使用 存储在 optim.optimizer.state_dict() 中的值
+        saved_optimizer_state_dict = optim.optimizer.state_dict() #存储
     else:
         optim = Optimizer(
             opt.optim, opt.learning_rate, opt.max_grad_norm,
@@ -39,7 +41,8 @@ def build_optim(model, opt, checkpoint):
             decay_method=opt.decay_method,
             warmup_steps=opt.warmup_steps)
 
-    optim.set_parameters(model.named_parameters())
+    optim.set_parameters(model.named_parameters()) #在下文定义
+    # named_parameters()每一次迭代元素的名字和param
 
     if opt.train_from:
         optim.optimizer.load_state_dict(saved_optimizer_state_dict)
@@ -97,16 +100,19 @@ class Optimizer(object):
     rate scheduling beyond what is currently available.
     Also implements necessary methods for training RNNs such
     as grad manipulations.
+    用于优化的控制器类。 
+    主要是 `optim` 的精简包装器，但对于实现超出当前可用的速率调度也很有用。 
+    还实现了训练 RNN 的必要方法，例如梯度操作。
 
     Args:
       method (:obj:`str`): one of [sgd, adagrad, adadelta, adam]
       lr (float): learning rate
       lr_decay (float, optional): learning rate decay multiplier
-      start_decay_steps (int, optional): step to start learning rate decay
+      start_decay_steps (int, optional): step to start learning rate decay 开始学习率衰减的步骤
       beta1, beta2 (float, optional): parameters for adam
-      adagrad_accum (float, optional): initialization parameter for adagrad
-      decay_method (str, option): custom decay options
-      warmup_steps (int, option): parameter for `noam` decay
+      adagrad_accum (float, optional): initialization parameter for adagrad  # adagrad 的初始化参数
+      decay_method (str, option): custom decay options自定义衰减选项
+      warmup_steps (int, option): parameter for `noam` decay  `noam` 衰减的参数
       model_size (int, option): parameter for `noam` decay
 
     We use the default parameters for Adam that are suggested by
@@ -182,6 +188,8 @@ class Optimizer(object):
 
         Optionally, will employ gradient modification or update learning
         rate.
+        
+        根据当前梯度更新模型参数。可选地，将采用梯度修改或更新学习率。
         """
         self._step += 1
 
