@@ -142,14 +142,15 @@ class GlobalAttention(nn.Module):
                 h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
                 h_t_ = self.linear_in(h_t_)
                 h_t = h_t_.view(tgt_batch, tgt_len, tgt_dim)
-            h_s_ = h_s.transpose(1, 2)
-            # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
+            h_s_ = h_s.transpose(1, 2) #将dim1和2调换位置[batch x dim x src_len]
+            # torch.bmm  (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
             return torch.bmm(h_t, h_s_)
         else:
             dim = self.dim
             wq = self.linear_query(h_t.view(-1, dim))
             wq = wq.view(tgt_batch, tgt_len, 1, dim)
             wq = wq.expand(tgt_batch, tgt_len, src_len, dim)
+            # 讲dim2由1改为src_len
 
             uh = self.linear_context(h_s.contiguous().view(-1, dim))
             uh = uh.view(src_batch, 1, src_len, dim)
@@ -164,9 +165,9 @@ class GlobalAttention(nn.Module):
         """
 
         Args:
-          source (`FloatTensor`): query vectors `[batch x tgt_len x dim]`
-          memory_bank (`FloatTensor`): source vectors `[batch x src_len x dim]`
-          memory_lengths (`LongTensor`): the source context lengths `[batch]`
+          source (`FloatTensor`): query vectors问题向量 `[batch x tgt_len x dim]`
+          memory_bank (`FloatTensor`): source vectors资源向量 `[batch x src_len x dim]`
+          memory_lengths (`LongTensor`): the source context lengths  源上下文长度 `[batch]`
           coverage (`FloatTensor`): None (not supported yet)
 
         Returns:
@@ -180,7 +181,7 @@ class GlobalAttention(nn.Module):
         # one step input
         if source.dim() == 2:
             one_step = True
-            source = source.unsqueeze(1)
+            source = source.unsqueeze(1) #在第二维增加一个维度
         else:
             one_step = False
 
@@ -194,9 +195,11 @@ class GlobalAttention(nn.Module):
             memory_masks = memory_masks.transpose(0,1)
             memory_masks = memory_masks.transpose(1,2)
             align.masked_fill_(1 - memory_masks.byte(), -float('inf'))
+            #align中(1 - memory_masks.byte())为true的位置，用-float('inf')填充
 
         if memory_lengths is not None:
             mask = sequence_mask(memory_lengths, max_len=align.size(-1))
+            #返回一个长度为max_len的是否为true的bool列表
             mask = mask.unsqueeze(1)  # Make it broadcastable.
             align.masked_fill_(1 - mask, -float('inf'))
 
@@ -204,14 +207,16 @@ class GlobalAttention(nn.Module):
         align_vectors = align_vectors.view(batch, target_l, source_l)
 
         c = torch.bmm(align_vectors, memory_bank)
+        #[batch x tgt_len x src_len] bmm [batch x src_len x dim] -->[batch x tgt_len x dim]
 
-        # concatenate
+        # concatenate  [c, source] [batch x tgt_len x dim] || [batch x tgt_len x dim]
         concat_c = torch.cat([c, source], 2).view(batch*target_l, dim*2)
+        #按列拼接[c, source]，后重塑
         attn_h = self.linear_out(concat_c).view(batch, target_l, dim)
         if self.attn_type in ["general", "dot"]:
             attn_h = torch.tanh(attn_h)
 
-        if one_step:
+        if one_step: #去除dim1
             attn_h = attn_h.squeeze(1)
             align_vectors = align_vectors.squeeze(1)
 
