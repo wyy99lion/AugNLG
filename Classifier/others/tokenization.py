@@ -49,31 +49,41 @@ VOCAB_NAME = 'vocab.txt'
 
 
 def load_vocab(vocab_file):
+    #返回以单词为key，单词出现的位置为值的字典
     """Loads a vocabulary file into a dictionary."""
-    vocab = collections.OrderedDict()
+    vocab = collections.OrderedDict() 
+    #是一种特殊字典，能够按照键的插入顺序保留键值对在字典的次序
     index = 0
     with open(vocab_file, "r", encoding="utf-8") as reader:
         while True:
             token = reader.readline()
             if not token:
                 break
-            token = token.strip()
+            token = token.strip() #用于移除字符串头尾指定的字符（默认为空格或换行符）或字符序列
+            
             vocab[token] = index
             index += 1
     return vocab
 
 
 def whitespace_tokenize(text):
-    """Runs basic whitespace cleaning and splitting on a peice of text."""
-    text = text.strip()
+    """
+    将文本去除前后空字符后，拆分成列表
+    Runs basic whitespace cleaning and splitting on a peice of text.
+    对一段文本运行基本的空白清理和拆分。
+    """
+    text = text.strip() 
     if not text:
         return []
-    tokens = text.split()
+    tokens = text.split() #split()方法将字符串拆分为列表。默认分隔符是任何空白字符。
     return tokens
 
 
 class BertTokenizer(object):
-    """Runs end-to-end tokenization: punctuation splitting + wordpiece"""
+    """
+    Runs end-to-end tokenization: punctuation splitting + wordpiece
+    运行端到端标记化：标点符号拆分 + wordpiece
+    """
 
     def __init__(self, vocab_file, do_lower_case=True, max_len=None,
                  never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]", "[unused0]", "[unused1]", "[unused2]", "[unused3]", "[unused4]", "[unused5]", "[unused6]")):
