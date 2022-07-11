@@ -9,32 +9,34 @@ from models.reporter_ext import ReportMgr, Statistics
 from others.logging import logger
 
 
-def _tally_parameters(model):
-    n_params = sum([p.nelement() for p in model.parameters()])
+def _tally_parameters(model):# 获得参数的总数量
+    n_params = sum([p.nelement() for p in model.parameters()]) 
+    # parameters()会返回一个生成器（迭代器）
+    # nelement() 可以统计 tensor (张量) 的元素的个数。
     return n_params
 
 
 def build_trainer(args, device_id, model, optim):
 
-    grad_accum_count = args.accum_count
+    grad_accum_count = args.accum_count #累积计数
     n_gpu = args.world_size
 
     if device_id >= 0:
-        gpu_rank = int(args.gpu_ranks[device_id])
+        gpu_rank = int(args.gpu_ranks[device_id]) #对应设备的gpu等级
     else:
         gpu_rank = 0
         n_gpu = 0
     print('gpu_rank %d' % gpu_rank)
 
     tensorboard_log_dir = args.model_path
-    writer = SummaryWriter(tensorboard_log_dir, comment="Unmt")
+    writer = SummaryWriter(tensorboard_log_dir, comment="Unmt") #记录日志，存在tensorboard_log_dir-Unmt
     report_manager = ReportMgr(args.report_every, start_time=-1, tensorboard_writer=writer)
     trainer = Trainer(args, model, optim, grad_accum_count, n_gpu, gpu_rank, report_manager)
 
     # print(tr)
     if (model):
         n_params = _tally_parameters(model)
-        logger.info('* number of parameters: %d' % n_params)
+        logger.info('* number of parameters: %d' % n_params) #参数数量
 
     return trainer
 
@@ -44,19 +46,19 @@ class Trainer(object):
     def __init__(self, args, model, optim,
                  grad_accum_count=1, n_gpu=1, gpu_rank=1,
                  report_manager=None):
-        # Basic attributes.
+        # Basic attributes.基本属性
         self.args = args
-        self.save_checkpoint_steps = args.save_checkpoint_steps
+        self.save_checkpoint_steps = args.save_checkpoint_steps #保存检查点步骤
         self.model = model
         self.optim = optim
-        self.grad_accum_count = grad_accum_count
+        self.grad_accum_count = grad_accum_count #grad累计数
         self.n_gpu = n_gpu
         self.gpu_rank = gpu_rank
         self.report_manager = report_manager
 
         self.loss = torch.nn.BCELoss(reduction='none')
         assert grad_accum_count > 0
-        # Set model in training mode.
+        # Set model in training mode.将模型设置为训练模式
         if (model):
             self.model.train()
 
@@ -67,9 +69,9 @@ class Trainer(object):
         # step =  self.optim._step + 1
         step = self.optim._step + 1
         true_batchs = []
-        accum = 0
+        accum = 0  #累积
         normalization = 0
-        train_iter = train_iter_fct()
+        train_iter = train_iter_fct() #训练迭代函数
 
         total_stats = Statistics()
         report_stats = Statistics()
@@ -93,12 +95,12 @@ class Trainer(object):
 
                         self._gradient_accumulation(
                             true_batchs, normalization, total_stats,
-                            report_stats)
+                            report_stats) #梯度累积，下文定义
 
                         report_stats = self._maybe_report_training(
                             step, train_steps,
                             self.optim.learning_rate,
-                            report_stats)
+                            report_stats) #下文定义
 
                         true_batchs = []
                         accum = 0
@@ -116,31 +118,37 @@ class Trainer(object):
 
     def test(self, test_iter, step, cal_lead=False, cal_oracle=False):
 
-        # Set model in validating mode.
+        # Set model in validating mode.将模型设置为验证模式
         def _get_ngrams(n, text):
-            ngram_set = set()
+            # 返回由所有ngram构成的无序不重复元素集
+            ngram_set = set() 
+            # set() 函数创建一个无序不重复元素集,可进行关系测试,删除重复数据,还可以计算交集、差集、并集等。
             text_length = len(text)
-            max_index_ngram_start = text_length - n
+            max_index_ngram_start = text_length - n 
+            #最大索引 ngram 开始，即ngram的开始元素从1 至 max_index_ngram_start
             for i in range(max_index_ngram_start + 1):
                 ngram_set.add(tuple(text[i:i + n]))
             return ngram_set
 
-        def _block_tri(c, p):
-            tri_c = _get_ngrams(3, c.split())
+        def _block_tri(c, p): #tri块
+            tri_c = _get_ngrams(3, c.split()) #获取c中所有的3gram
             for s in p:
                 tri_s = _get_ngrams(3, s.split())
                 if len(tri_c.intersection(tri_s)) > 0:
+                    #如果交集>0
                     return True
             return False
 
         if (not cal_lead and not cal_oracle):
-            self.model.eval()
+            self.model.eval() 
+            # 不启用 BatchNormalization 和 Dropout，保证BN和dropout不发生变化
         stats = Statistics()
 
         pred_path = self.args.result_path
         with open(pred_path, 'w') as save_pred:
             with torch.no_grad():
                 for batch in test_iter:
+                    # 测试迭代器中的batch
                     src = batch.src
                     segs = batch.segs
                     clss = batch.clss
@@ -155,6 +163,7 @@ class Trainer(object):
         return stats
 
     def _gradient_accumulation(self, true_batchs, normalization, total_stats, report_stats):
+        # 梯度累积
         if self.grad_accum_count > 1:
             self.model.zero_grad()
 
@@ -173,7 +182,7 @@ class Trainer(object):
             loss = self.loss(sent_scores, clss.float())
             loss = loss.sum()
             numel = loss.numel()
-            (loss / numel).backward()
+            (loss / numel).backward() #loss之和/元素个数
 
             #batch_stats = Statistics(float(loss.cpu().data.numpy()), normalization)
             batch_stats = Statistics(float(loss.cpu().data.numpy()*100), numel)
@@ -194,6 +203,7 @@ class Trainer(object):
 
         # in case of multi step gradient accumulation,
         # update only after accum batches
+        #在多步梯度累积的情况下，仅在累积批次后更新
         if self.grad_accum_count > 1:
             if self.n_gpu > 1:
                 grads = [p.grad.data for p in self.model.parameters()
@@ -210,6 +220,7 @@ class Trainer(object):
         #                   else self.generator)
 
         model_state_dict = real_model.state_dict()
+        # state_dict 是一个简单的python的字典对象,将每一层与它的对应参数建立映射关系
         # generator_state_dict = real_generator.state_dict()
         checkpoint = {
             'model': model_state_dict,
@@ -218,6 +229,7 @@ class Trainer(object):
             'optim': self.optim,
         }
         checkpoint_path = os.path.join(self.args.model_path, 'model_step_%d.pt' % step)
+        #  os.path.join()函数用于路径拼接文件路径，可以传入多个路径 如果不存在以‘’/’开始的参数，则函数会自动加上
         logger.info("Saving checkpoint %s" % checkpoint_path)
         # checkpoint_path = '%s_step_%d.pt' % (FLAGS.model_path, step)
         if (not os.path.exists(checkpoint_path)):
@@ -227,6 +239,7 @@ class Trainer(object):
     def _start_report_manager(self, start_time=None):
         """
         Simple function to start report manager (if any)
+        启动report管理器的简单功能
         """
         if self.report_manager is not None:
             if start_time is None:
@@ -237,13 +250,15 @@ class Trainer(object):
     def _maybe_gather_stats(self, stat):
         """
         Gather statistics in multi-processes cases
+        在多进程案例中收集统计信息
 
         Args:
             stat(:obj:onmt.utils.Statistics): a Statistics object to gather
                 or None (it returns None in this case)
+                要收集的统计信息对象 或 None （在这种情况下它返回 None ）
 
         Returns:
-            stat: the updated (or unchanged) stat object
+            stat: the updated (or unchanged) stat object 更新（或未更改）的 stat 对象
         """
         if stat is not None and self.n_gpu > 1:
             return Statistics.all_gather_stats(stat)
@@ -254,6 +269,7 @@ class Trainer(object):
         """
         Simple function to report training stats (if report_manager is set)
         see `onmt.utils.ReportManagerBase.report_training` for doc
+        report训练统计数据的简单功能（如果设置了 report_manager）请参阅文档的
         """
         if self.report_manager is not None:
             return self.report_manager.report_training(
@@ -265,6 +281,7 @@ class Trainer(object):
         """
         Simple function to report stats (if report_manager is set)
         see `onmt.utils.ReportManagerBase.report_step` for doc
+        报告统计信息的简单函数（如果设置了 report_manager）
         """
         if self.report_manager is not None:
             return self.report_manager.report_step(
@@ -273,7 +290,7 @@ class Trainer(object):
 
     def _maybe_save(self, step):
         """
-        Save the model if a model saver is set
+        Save the model if a model saver is set如果设置了模型保存程序，则保存模型
         """
         if self.model_saver is not None:
             self.model_saver.maybe_save(step)
