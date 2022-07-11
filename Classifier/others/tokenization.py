@@ -86,19 +86,22 @@ class BertTokenizer(object):
     """
 
     def __init__(self, vocab_file, do_lower_case=True, max_len=None,
-                 never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]", "[unused0]", "[unused1]", "[unused2]", "[unused3]", "[unused4]", "[unused5]", "[unused6]")):
+                 never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]", 
+                              "[unused0]", "[unused1]", "[unused2]", "[unused3]", 
+                              "[unused4]", "[unused5]", "[unused6]")):
 
         if not os.path.isfile(vocab_file):
             raise ValueError(
                 "Can't find a vocabulary file at path '{}'. To load the vocabulary from a Google pretrained "
                 "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(vocab_file))
         self.do_lower_case = do_lower_case
-        self.vocab = load_vocab(vocab_file)
+        self.vocab = load_vocab(vocab_file) #将返回以单词为key，单词出现的位置为值的字典
         self.ids_to_tokens = collections.OrderedDict(
             [(ids, tok) for tok, ids in self.vocab.items()])
+        #返回以单词位置为key，单词为值的列表
         self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case,
                                               never_split=never_split)
-        self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab)
+        self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab) 
         self.max_len = max_len if max_len is not None else int(1e12)
 
     def tokenize(self, text, use_bert_basic_tokenizer=False):
@@ -117,7 +120,10 @@ class BertTokenizer(object):
         return split_tokens
 
     def convert_tokens_to_ids(self, tokens):
-        """Converts a sequence of tokens into ids using the vocab."""
+        """
+        Converts a sequence of tokens into ids using the vocab.
+        使用 vocab 将一系列标记转换为 id。
+        """
         ids = []
         for token in tokens:
             ids.append(self.vocab[token])
@@ -130,7 +136,10 @@ class BertTokenizer(object):
         return ids
 
     def convert_ids_to_tokens(self, ids):
-        """Converts a sequence of ids in wordpiece tokens using the vocab."""
+        """
+        Converts a sequence of ids in wordpiece tokens using the vocab.
+        使用 vocab 转换 wordpiece 标记中的 id 序列。
+        """
         tokens = []
         for i in ids:
             tokens.append(self.ids_to_tokens[i])
@@ -141,6 +150,8 @@ class BertTokenizer(object):
         """
         Instantiate a PreTrainedBertModel from a pre-trained model file.
         Download and cache the pre-trained model file if needed.
+        从预训练模型文件中实例化 PreTrainedBertModel。
+        如果需要，下载并缓存预训练的模型文件。
         """
         if pretrained_model_name_or_path in PRETRAINED_VOCAB_ARCHIVE_MAP:
             vocab_file = PRETRAINED_VOCAB_ARCHIVE_MAP[pretrained_model_name_or_path]
