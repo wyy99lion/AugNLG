@@ -4,14 +4,14 @@
 
 
 def _get_ngrams(n, text):
-    """Calcualtes n-grams.
+    """Calcualtes n-grams 计算 n-gram.
 
     Args:
-      n: which n-grams to calculate
-      text: An array of tokens
+      n: which n-grams to calculate要计算哪些 n-gram
+      text: An array of tokens 数组
 
     Returns:
-      A set of n-grams
+      A set of n-grams 一系列 n-gram
     """
     ngram_set = set()
     text_length = len(text)
