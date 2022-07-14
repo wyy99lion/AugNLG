@@ -168,7 +168,7 @@ def self_training(args):
     out_domain_exps = []
     # Get augmented positive/negtive data (train)
     prediction_path = "%s/prediction.txt" % args.self_learning_path
-    prediction_path = PREDICTION_PATH.replace('[DOMAIN]', process_domain)
+    prediction_path = prediction_path.replace('[DOMAIN]', process_domain)
     for line in open(prediction_path):
         flist = line.strip().split('\t')
         score = float(flist[0])
