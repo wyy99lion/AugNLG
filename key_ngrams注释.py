@@ -180,7 +180,7 @@ if __name__ == '__main__':
         if tf_idf * args.in_out_ratio < df_tfidfvect[key]['Out_domain']:  #df_tfidfvect[key]['Out_domain']>0.1*tf_idf 阈值
             # 域外ngram对应值 大于 域内ngram*0.1
             print (key, tf_idf, df_tfidfvect[key]['Out_domain'], in_count[key])
-            #输出ngram对应的 域内值，域外值，出现的总次数
+            #输出ngram对应的 域内值，域外值，某键总次数
             for tok in key.split():
                 stop_words.add(tok)
                 #不符合条件的key中的tok呗加入停用词
@@ -190,7 +190,7 @@ if __name__ == '__main__':
             #符合条件的域内ngram短语的值添加到new_dict
 
 
-    # Second filtering 根据表面重叠关键词获取领域相关的话语
+    # Second filtering
     #过滤掉带停用词的ngram
     filtered_ngrams = {}
     for key in new_dict:
