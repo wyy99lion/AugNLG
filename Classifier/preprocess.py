@@ -41,3 +41,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     init_logger(args.log_file)
     eval('data_builder.'+args.mode + '(args)')
+    #eval() 函数用来执行一个字符串表达式，并返回表达式的值。
