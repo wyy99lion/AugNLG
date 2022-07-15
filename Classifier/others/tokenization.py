@@ -15,6 +15,14 @@
 """Tokenization classes."""
 
 from __future__ import absolute_import, division, print_function, unicode_literals
+"""
+absolute_import ：绝对导入，其作用是导入模块的时候如果在当前项目目录下包含相同的模块，则优先导入标准库，也就是说如果你的当前目录有有个time模块，
+                import time导入的仍然是Python官方的time标准库
+division：精确除法，默认情况下2/4的结果是0，导入division后结果是0.5
+print_function：print可以作为函数使用，在Python2中 print的书写格式是print xxx，python3中是print(xxx)，print_function可以使得python2使用python3的格式
+unicode_literals 此代码是用来使得python2版本编写的代码能适应python3新的规范而设计的。 若你在python2环境下编写将来在python3环境下运行的代码，可以带上该语句。 
+            其实现的目的是将当前所有的string字符串统一转换为unicode编码格式
+"""
 
 import collections
 import logging
